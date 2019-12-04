@@ -16,7 +16,7 @@ import javax.swing.JPanel;
 import javax.swing.border.Border;
 import javax.swing.BorderFactory;
 
-
+ 
 
 public class JSpot extends JPanel implements MouseListener, Spot {
 

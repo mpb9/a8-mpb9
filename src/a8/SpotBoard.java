@@ -1,7 +1,7 @@
 package a8;
 
 
-import java.util.Iterator;
+import java.util.Iterator; 
 
 
 public interface SpotBoard extends Iterable<Spot> {

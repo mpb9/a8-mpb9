@@ -25,7 +25,7 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener {
 	private int width = 7;
 	private int [][] numberOfNeighbors = new int [width][height];
 	private boolean torusMode = false;
-	
+	 
 	private boolean automaticRunStarted = false;
 	
 	public LifeWidget() {

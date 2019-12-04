@@ -1,4 +1,4 @@
-package a8;
+package a8; 
 
 public interface SpotListener {
 

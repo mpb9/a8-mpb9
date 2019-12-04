@@ -22,4 +22,4 @@ public class LifeGame {
 		main_frame.pack();
 		main_frame.setVisible(true);
 	}
-}
+} 

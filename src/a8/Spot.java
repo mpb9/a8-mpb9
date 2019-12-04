@@ -1,7 +1,7 @@
 package a8;
 
 
-import java.awt.Color;
+import java.awt.Color; 
 
 public interface Spot {
 

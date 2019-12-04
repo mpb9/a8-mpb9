@@ -9,7 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import javax.swing.JPanel;
-
+ 
 public class JSpotBoard extends JPanel implements SpotBoard {
 
 	private static final int DEFAULT_SCREEN_WIDTH = 500;
