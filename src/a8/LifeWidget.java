@@ -9,770 +9,347 @@ import java.awt.event.ActionListener;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JSlider;
+import javax.swing.JTextField;
+import javax.swing.JToggleButton;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
+public class LifeWidget extends JPanel implements ActionListener, SpotListener, ChangeListener {
 
-public class LifeWidget extends JPanel implements ActionListener, SpotListener {
+	private JSpotBoard _board; /* SpotBoard playing area. */
+	private JLabel _message; /* Label for messages. */
+	private boolean _game_won; /* Indicates if games was been won already. */
+	private JSlider _slider;
+	private JToggleButton torusButton;
+	private boolean torus;
+	private int lowBirth = 3;
+	private int highBirth = 3;
+	private int lowSurvive = 2;
+	private int highSurvive = 3;
+	private int sliderValue = 10;
+	private JTextField lowBirthField = new JTextField("3");
+	private JTextField highBirthField = new JTextField("3");
+	private JTextField lowSurviveField = new JTextField("2");
+	private JTextField highSurviveField = new JTextField("3");
+	int timeBetweenRuns;
+	private JSlider threadSlider;
+	JToggleButton startButton;
+	private ThreadSzn autoRun;
 
-	//private enum Player {BLACK, WHITE};
-	//private Player nextUp;
-	// private boolean gameover;
-	// private int totalMoves = 0;
-	
-	// NO NEED for players or for gameover in this game
-	
-	private JSpotBoard board;
-	private int height = 6;
-	private int width = 7;
-	private int [][] numberOfNeighbors = new int [width][height];
-	private boolean torusMode = false;
-	 
-	private boolean automaticRunStarted = false;
-	
 	public LifeWidget() {
-		
-		board = new JSpotBoard(7, 6);
-		
-		for (int i = 0; i < width; i++) {
-			for (int j = 0; j < height; j++) {
-				board.getSpotAt(i, j).setBackground(Color.WHITE);
-			}
-		}
-		
+
+		/* Create SpotBoard and message label. */
+
+		_slider = new JSlider(JSlider.HORIZONTAL, 10, 500, 10);
+		_slider.addChangeListener(this);
+		_slider.setMajorTickSpacing(35);
+		_slider.setMinorTickSpacing(5);
+		_slider.setPaintTicks(true);
+		_slider.setPaintLabels(true);
+
+		threadSlider = new JSlider(JSlider.VERTICAL, 10, 1000, 10);
+		threadSlider.setMajorTickSpacing(90);
+		threadSlider.setMinorTickSpacing(10);
+		threadSlider.setPaintTicks(true);
+		threadSlider.setPaintLabels(true);
+
+		JButton applyButton = new JButton("Apply");
+		JButton resetButton = new JButton("Reset");
+		JLabel threadLabel = new JLabel("Time between updates. (ms)");
+		JPanel threadPanel = new JPanel();
+		threadPanel.setLayout(new GridLayout(3, 1));
+		startButton = new JToggleButton("Start");
+		threadPanel.add(threadLabel);
+		threadPanel.add(threadSlider);
+		threadPanel.add(startButton);
+		threadSlider.addChangeListener(this);
+		startButton.addActionListener(this);
+
+		_board = new JSpotBoard(sliderValue, sliderValue);
+		_message = new JLabel();
+
+		/* Set layout and place SpotBoard at center. */
+
 		setLayout(new BorderLayout());
-		add(board, BorderLayout.CENTER);
-		
-		JPanel upperPanel = new JPanel();
-		upperPanel.setLayout(new BorderLayout());
-		
-		JPanel lowerPanel = new JPanel();
-		lowerPanel.setLayout(new BorderLayout());
-		
-		JButton randomFillButton = new JButton("Random Fill");
-		randomFillButton.addActionListener(this);
-		lowerPanel.add(randomFillButton, BorderLayout.WEST);
-		
-		JButton setSizeButton = new JButton("Set New Size");
-		setSizeButton.addActionListener(this);
-		upperPanel.add(setSizeButton, BorderLayout.WEST);
-		
-		JButton nextTurnButton = new JButton("Next Turn");
-		nextTurnButton.addActionListener(this);
-		upperPanel.add(nextTurnButton, BorderLayout.EAST);
-		
-		JButton resetButton = new JButton("Restart");
+		add(_board, BorderLayout.CENTER);
+
+		/* Create subpanel for message area and reset button. */
+
+		JPanel thresholdPanel = new JPanel();
+		thresholdPanel.setLayout(new GridLayout(5, 2));
+		JPanel incrementTorusRandFillPanel = new JPanel();
+		incrementTorusRandFillPanel.setLayout(new BorderLayout());
+		JPanel clear_message_panel = new JPanel();
+		clear_message_panel.setLayout(new BorderLayout());
+
+		/* Reset button. Add ourselves as the action listener. */
+
+		JLabel lowBirth = new JLabel("Lower Birth Threshold (Integers Only)");
+		JLabel highBirth = new JLabel("Higher Birth Threshold (Integers Only)");
+		JLabel lowSurvive = new JLabel("Lower Survival Threshold (Integers Only)");
+		JLabel highSurvive = new JLabel("Higher Survival Threshold (Integers Only)");
+		JButton incrementButton = new JButton("One Step");
+		torusButton = new JToggleButton("Torus");
+		JButton randomFillButton = new JButton("Fill Randomly");
+		JButton clear_button = new JButton("Clear");
+
 		resetButton.addActionListener(this);
-		lowerPanel.add(resetButton, BorderLayout.EAST);
-		
-		
-		
-		JButton setBirthSurviveNumberButton = new JButton("Set Birth/Survive Rate");
-		setBirthSurviveNumberButton.addActionListener(this);
-		lowerPanel.add(setBirthSurviveNumberButton, BorderLayout.CENTER);
-		
-		JButton setTorusModeButton = new JButton("Torus Mode On/Off");
-		setTorusModeButton.addActionListener(this);
-		lowerPanel.add(setTorusModeButton, BorderLayout.PAGE_END);
-		
-		JButton startStop_AutomaticRunButton = new JButton("Start/Stop");
-		startStop_AutomaticRunButton.addActionListener(this);
-		upperPanel.add(startStop_AutomaticRunButton, BorderLayout.CENTER);
-		
-		
-		add(upperPanel, BorderLayout.NORTH);
-		add(lowerPanel, BorderLayout.SOUTH);
-		board.addSpotListener(this);
-		
-		clearBoard();
-	}
-	
-	public void resize(int width, int height) {
+		incrementButton.addActionListener(this);
+		clear_button.addActionListener(this);
+		torusButton.addActionListener(this);
+		randomFillButton.addActionListener(this);
+		lowBirthField.addActionListener(this);
+		highBirthField.addActionListener(this);
+		lowSurviveField.addActionListener(this);
+		highSurviveField.addActionListener(this);
+		applyButton.addActionListener(this);
 
+		incrementTorusRandFillPanel.add(incrementButton, BorderLayout.CENTER);
+		incrementTorusRandFillPanel.add(torusButton, BorderLayout.NORTH);
+		incrementTorusRandFillPanel.add(randomFillButton, BorderLayout.SOUTH);
+		clear_message_panel.add(clear_button, BorderLayout.EAST);
+		clear_message_panel.add(_message, BorderLayout.CENTER);
+		clear_message_panel.add(_slider, BorderLayout.SOUTH);
+		thresholdPanel.add(lowBirth);
+		thresholdPanel.add(lowBirth);
+		thresholdPanel.add(lowBirthField);
+		thresholdPanel.add(highBirth);
+		thresholdPanel.add(highBirthField);
+		thresholdPanel.add(lowSurvive);
+		thresholdPanel.add(lowSurviveField);
+		thresholdPanel.add(highSurvive);
+		thresholdPanel.add(highSurviveField);
+		thresholdPanel.add(applyButton);
+		thresholdPanel.add(resetButton);
+
+		/* Add subpanel in south area of layout. */
+
+		add(incrementTorusRandFillPanel, BorderLayout.EAST);
+		add(clear_message_panel, BorderLayout.SOUTH);
+		add(thresholdPanel, BorderLayout.NORTH);
+		add(threadPanel, BorderLayout.WEST);
+
+		/*
+		 * Add ourselves as a spot listener for all of the spots on the spot board.
+		 */
+		_board.addSpotListener(this);
+
+		/* Reset game. */
+		resetGame();
 	}
-	
-	private void clearBoard() {
-		for (Spot s: board) {
-			s.clearSpot();
-			s.unhighlightSpot();
+
+	/*
+	 * resetGame
+	 * 
+	 * Resets the game by clearing all the spots on the board, picking a new secret
+	 * spot, resetting game status fields, and displaying start message.
+	 * 
+	 */
+
+	private void resetGame() {
+		/*
+		 * Clear all spots on board. Uses the fact that SpotBoard implements
+		 * Iterable<Spot> to do this in a for-each loop.
+		 */
+
+		_board.setVisible(false);
+		remove(_board);
+		_board = new JSpotBoard(sliderValue, sliderValue);
+		add(_board, BorderLayout.CENTER);
+		_board.addSpotListener(this);
+
+		for (Spot s : _board) {
+			s.setBackground(Color.LIGHT_GRAY);
 		}
-		
 
-	}
-	
-	@Override
-	public void spotClicked(Spot spot) {
-		
-		if (spot.isEmpty()) {
-			spot.setSpot();
-			spot.setSpotColor(Color.BLACK);
-			spot.highlightSpot();
-		} else {
-			spot.setSpotColor(Color.WHITE);
-			spot.clearSpot();
-			spot.unhighlightSpot();
-		}
-		
-	}
-
-	@Override
-	public void spotEntered(Spot spot) {
-		spot.highlightSpot();
-		// not a needed method
-	}
-
-	@Override
-	public void spotExited(Spot spot) {
-		// not a needed method
-		spot.unhighlightSpot();
+		_message.setText("Welcome to the Game of Life. Below is the size of the Grid.");
 	}
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		if (e.getActionCommand().equals("Restart")) {
-			clearBoard();
-		} else if (e.getActionCommand().equals("Random Fill")) {
-			randomFill();
-		} else if (e.getActionCommand().equals("Next Turn")) {
-			nextTurn();
-		} else if (e.getActionCommand().equals("Set New Size")) { // doesn't work
-			resize(15, 15); }
-		
-		else if (e.getActionCommand().equals("Set Birth/Survive Rate")) { // intermediate level
-			// need a way to GET each of these numbers from the user.
-			// text box? input window?
-			int birthNumber_ForDeadCells = 0; // get number from user
-			int surviveNumber_ForAliveCells = 0; // get number from user
-			setBirthSurviveRates(birthNumber_ForDeadCells, surviveNumber_ForAliveCells);
-		} else if (e.getActionCommand().equals("Torus Mode On/Off")) { // intermediate level
-			torusMode = !torusMode;		} 
-		
-		else if (e.getActionCommand().equals("Start/Stop")) {
-			automaticRunStarted = !automaticRunStarted;
-			if (automaticRunStarted) {
-				automaticallyRun();
-			}
-		} 
-		
-	}
-	
-	public void setBirthSurviveRates(int birthNumber_ForDeadCells, int surviveNumber_ForAliveCells) {
-		
-	}
-	
-	public void randomFill() {
-		for (int i = 0; i < width; i++) {
-			for (int j = 0; j < height; j++) {
-				int x = (int) Math.round(Math.random());
-				if (x == 1) {
-					board.getSpotAt(i, j).setSpotColor(Color.WHITE);
-					board.getSpotAt(i, j).clearSpot();
-					board.getSpotAt(i, j).unhighlightSpot();
+		/* Handles reset game button. Simply reset the game. */
+		if (e.getActionCommand() == "Clear") {
+			resetGame();
+		} else if (e.getActionCommand() == "One Step") {
+			this.runOneStep();
+		} else if (e.getActionCommand() == "Fill Randomly") {
+			for (Spot s : _board) {
+				if (Math.random() >= 0.5) {
+					s.setBackground(Color.BLACK);
 				} else {
-					board.getSpotAt(i, j).setSpot();
-					board.getSpotAt(i, j).setSpotColor(Color.BLACK);
-					board.getSpotAt(i, j).highlightSpot();
+					s.setBackground(Color.LIGHT_GRAY);
 				}
 			}
-		}
-	}
-	
-	public void nextTurn() {
+		} else if (e.getActionCommand() == "Torus") {
+			if (torusButton.isSelected()) {
+				torus = true;
+			} else {
+				torus = false;
+			}
+		} else if (e.getActionCommand() == "Start") {
+		 	autoRun = new ThreadSzn(this);
+			autoRun.start();
+			startButton.setText("Stop");
+		} else if (e.getActionCommand() == "Stop") {
+			autoRun.halt();
+			try {
+				autoRun.join();
+			} catch (InterruptedException s) {
+			}
+			startButton.setText("Start");
+		} else if (e.getActionCommand() == "Apply") {
+			lowBirth = Integer.parseInt(lowBirthField.getText());
+			highBirth = Integer.parseInt(highBirthField.getText());
+			lowSurvive = Integer.parseInt(lowSurviveField.getText());
+			highSurvive = Integer.parseInt(highSurviveField.getText());
+		} else if (e.getActionCommand() == "Reset") {
+			lowBirth = 3;
+			highBirth = 3;
+			lowSurvive = 2;
+			highSurvive = 3;
+			lowBirthField.setText("3");
+			highBirthField.setText("3");
+			lowSurviveField.setText("2");
+			highSurviveField.setText("3");
 
-		for (int i = 0; i < width; i++) {
-			for (int j = 0; j < height; j++) {
-				numberOfNeighbors[i][j] = checkNumberNeighbors(i,j);
+		}
+	}
+
+	/*
+	 * Implementation of SpotListener below. Implements game logic as responses to
+	 * enter/exit/click on spots.
+	 */
+
+	public void runOneStep() {
+		boolean[][] liveOrDie = new boolean[sliderValue][sliderValue];
+		for (Spot s : _board) {
+			int liveCount = 0;
+			for (int i = -1; i < 2; i++) {
+				for (int j = -1; j < 2; j++) {
+					if (torus) {
+						if (i == 0 && j == 0) {
+							continue;
+						} else if (s.getSpotX() + j < 0 || s.getSpotX() + j >= sliderValue || s.getSpotY() + i < 0
+								|| s.getSpotY() + i >= sliderValue) {
+							if (s.getSpotX() + j < 0 && s.getSpotY() + i < 0) {
+								if (_board.getSpotAt(sliderValue - 1, sliderValue - 1).getBackground() == Color.BLACK) {
+									liveCount++;
+								}
+							} else if (s.getSpotX() + j >= sliderValue && s.getSpotY() + i >= sliderValue) {
+								if (_board.getSpotAt(0, 0).getBackground() == Color.BLACK) {
+									liveCount++;
+								}
+							} else if (s.getSpotX() + j >= sliderValue && s.getSpotY() + i < 0) {
+								if (_board.getSpotAt(0, sliderValue - 1).getBackground() == Color.BLACK) {
+									liveCount++;
+								}
+							} else if (s.getSpotX() + j < 0 && s.getSpotY() + i >= sliderValue) {
+								if (_board.getSpotAt(sliderValue - 1, 0).getBackground() == Color.BLACK) {
+									liveCount++;
+								}
+							} else if (s.getSpotX() + j < 0) {
+								if (_board.getSpotAt(sliderValue - 1, s.getSpotY() + i)
+										.getBackground() == Color.BLACK) {
+									liveCount++;
+								}
+							} else if (s.getSpotX() + j >= sliderValue) {
+								if (_board.getSpotAt(0, s.getSpotY() + i).getBackground() == Color.BLACK) {
+									liveCount++;
+								}
+							} else if (s.getSpotY() + i < 0) {
+								if (_board.getSpotAt(s.getSpotX() + j, sliderValue - 1)
+										.getBackground() == Color.BLACK) {
+									liveCount++;
+								}
+							} else if (s.getSpotY() + i >= sliderValue) {
+								if (_board.getSpotAt(s.getSpotX() + j, 0).getBackground() == Color.BLACK) {
+									liveCount++;
+								}
+							}
+						} else if (_board.getSpotAt(s.getSpotX() + j, s.getSpotY() + i)
+								.getBackground() == Color.LIGHT_GRAY) {
+							continue;
+						} else {
+							liveCount++;
+						}
+					} else {
+						if (i == 0 && j == 0) {
+							continue;
+						} else if (s.getSpotX() + j < 0 || s.getSpotX() + j >= sliderValue || s.getSpotY() + i < 0
+								|| s.getSpotY() + i >= sliderValue) {
+							continue;
+						} else if (_board.getSpotAt(s.getSpotX() + j, s.getSpotY() + i)
+								.getBackground() == Color.LIGHT_GRAY) {
+							continue;
+						} else {
+							liveCount++;
+						}
+					}
+				}
+			}
+			if (liveCount < lowSurvive) {
+				liveOrDie[s.getSpotX()][s.getSpotY()] = false;
+			} else if (liveCount >= lowSurvive && liveCount <= highSurvive) {
+				if (s.getBackground() == Color.BLACK) {
+					liveOrDie[s.getSpotX()][s.getSpotY()] = true;
+				} else if (liveCount >= lowBirth && liveCount <= highBirth) {
+					liveOrDie[s.getSpotX()][s.getSpotY()] = true;
+				}
+			} else if (liveCount > highSurvive) {
+				liveOrDie[s.getSpotX()][s.getSpotY()] = false;
 			}
 		}
-		for (int i = 0; i < width; i++) {
-			for (int j = 0; j < height; j++) {
-				if (!board.getSpotAt(i, j).isEmpty()) {
-					aliveCell(numberOfNeighbors[i][j], i, j);
+		for (int i = 0; i < sliderValue; i++) {
+			for (int j = 0; j < sliderValue; j++) {
+				if (liveOrDie[j][i] == false) {
+					_board.getSpotAt(j, i).setBackground(Color.LIGHT_GRAY);
 				} else {
-					deadCell(numberOfNeighbors[i][j], i, j);
+					_board.getSpotAt(j, i).setBackground(Color.BLACK);
 				}
 			}
 		}
 	}
-	
-	public void aliveCell(int x, int i, int j) {
-		int num_of_neighbors = x;
-		
-		if (num_of_neighbors < 2 || num_of_neighbors > 3) {
-			board.getSpotAt(i, j).setSpotColor(Color.WHITE);
-			board.getSpotAt(i, j).clearSpot();
-			board.getSpotAt(i, j).unhighlightSpot();
+
+	@Override
+	public void spotEntered(Spot s) {
+		/* Highlight spot if game still going on. */
+
+		if (_game_won) {
+			return;
+		}
+		s.highlightSpot();
+	}
+
+	@Override
+	public void spotExited(Spot s) {
+		/* Unhighlight spot. */
+
+		s.unhighlightSpot();
+	}
+
+	@Override
+	public void stateChanged(ChangeEvent e) {
+		JSlider source = (JSlider) e.getSource();
+		if (source == threadSlider) {
+			if (!source.getValueIsAdjusting()) {
+				timeBetweenRuns = (int) source.getValue();
+			}
+		} else {
+			if (!source.getValueIsAdjusting()) {
+				sliderValue = (int) source.getValue();
+				resetGame();
+			}
 		}
 	}
-	
-	public void deadCell(int x, int i, int j) {
-		int num_of_neighbors = x;
-		
-		if (num_of_neighbors == 3) {
-			board.getSpotAt(i, j).setSpot();
-			board.getSpotAt(i, j).setSpotColor(Color.BLACK);
-			board.getSpotAt(i, j).highlightSpot();
-		}
-		
-	}
-	
-	public int checkNumberNeighbors(int i, int j) {
-		
-		// top left corner = 0,0
-		if (i == 0 && j == 0) { // spot is on top left corner, only check right,bottom right,and bottom center for neighbors
-			if (torusMode) {
-				return TORUSMODE_checkNumberNeighbors_TopLeftCorner_OfBoard(i, j);
-			} else {
-				return checkNumberNeighbors_TopLeftCorner_OfBoard(i, j);
-			}
-		} 
-		
-		// top right corner means i = (width - 1) and j = 0
-		else if (i == (width - 1) && j == 0) { // spot is on top right corner, only check left,bottom left,and bottom center for neighbors
-			if (torusMode) {
-				return TORUSMODE_checkNumberNeighbors__TopRightCorner_OfBoard(i, j);
-			} else {
-				return checkNumberNeighbors__TopRightCorner_OfBoard(i, j);
-			}
-		} 
-		
-		// bottom right corner means i = (width - 1) and j = (height - 1)
-		else if (i == (width - 1) && j == (height - 1)) { // spot is on bottom right corner, only check left,top left,and top center for neighbors
-			if (torusMode) {
-				return TORUSMODE_checkNumberNeighbors_BottomRightCorner_OfBoard(i, j);
-			} else {
-				return checkNumberNeighbors_BottomRightCorner_OfBoard(i, j);
-			}
-		} 
-		
-		// bottom left corner means i = 0 and j = (height - 1)
-		else if (i == 0 && j == (height - 1)) { // spot is on bottom left corner, only check right,top right,and top center for neighbors
-			if (torusMode) {
-				return TORUSMODE_checkNumberNeighbors__BottomLeftCorner_OfBoard(i, j);
-			} else {
-				return checkNumberNeighbors__BottomLeftCorner_OfBoard(i, j);
-			}
-		} 
-		
-		// left edge means i = 0
-		else if (i == 0) { // spot is along left edge, only check top center, top right, right, bottom right, bottom center
-			if (torusMode) {
-				return TORUSMODE_checkNumberNeighbors_LeftEdge_OfBoard(i, j);
-			} else {
-				return checkNumberNeighbors_LeftEdge_OfBoard(i, j);
-			}
-		} 
-		
-		// top edge means j = 0
-		else if (j == 0) { // spot is along top edge, only check left, bottom left, bottom center,bottom right, right
-			if (torusMode) {
-				return TORUSMODE_checkNumberNeighbors__TopEdge_OfBoard(i, j);
-			} else {
-				return checkNumberNeighbors__TopEdge_OfBoard(i, j);
-			}
-		} 
-		
-		// right edge means i =(board width) - 1
-		else if (i == (width - 1)) { // spot is along right edge, only check top center, top left,left,bottom left, bottom center
-			if (torusMode) {
-				return TORUSMODE_checkNumberNeighbors_RightEdge_OfBoard(i, j);
-			} else {
-				return checkNumberNeighbors_RightEdge_OfBoard(i, j);
-			}
-		} 
-		
-		// bottom edge means j = (board height) - 1
-		else if (j == (height - 1)) {  // spot is along bottom edge, only check left,top left,top center,top right, right
-			if (torusMode) {
-				return TORUSMODE_checkNumberNeighbors__BottomEdge_OfBoard(i, j);
-			} else {
-				return checkNumberNeighbors__BottomEdge_OfBoard(i, j);
-			}
-		} 
-		
-		// everything else (if it's in the middle, then torus mode shouldn't matter.)
-		else {
-			return checkNumberNeighbors_MiddleOfBoard(i, j);
+
+	@Override
+	public void spotClicked(Spot spot) {
+		if (spot.getBackground() == Color.LIGHT_GRAY) {
+			spot.setBackground(Color.BLACK);
+		} else {
+			spot.setBackground(Color.LIGHT_GRAY);
 		}
 	}
-	
-	public int checkNumberNeighbors_MiddleOfBoard(int i, int j) {
-		int total = 0;
-		
-		// top left
-		if (!board.getSpotAt(i - 1, j - 1).isEmpty()) {
-			total++;
-		}
-		
-		// left
-		if (!board.getSpotAt(i - 1, j).isEmpty()) {
-			total++;
-		}
-		
-		// bottom left
-		if (!board.getSpotAt(i - 1, j + 1).isEmpty()) {
-			total++;
-		}
-		
-		// top center
-		if (!board.getSpotAt(i, j - 1).isEmpty()) {
-			total++;
-		}
-		
-		// bottom center
-		if (!board.getSpotAt(i, j + 1).isEmpty()) {
-			total++;
-		}
-		
-		// top right
-		if (!board.getSpotAt(i + 1, j - 1).isEmpty()) {
-			total++;
-		}
-		
-		// right
-		if (!board.getSpotAt(i + 1, j).isEmpty()) {
-			total++;
-		}
-		
-		// bottom right
-		if (!board.getSpotAt(i + 1, j + 1).isEmpty()) {
-			total++;
-		}
-		
-		return total;
-	}
-	
-	public int checkNumberNeighbors_TopLeftCorner_OfBoard(int i, int j) {
-		 // only check right,bottom right,and bottom center for neighbors
-		 
-		int total = 0;
-		if (!board.getSpotAt(i + 1, j).isEmpty()) { // right
-			total++;
-		}
-		if (!board.getSpotAt(i + 1, j + 1).isEmpty()) { // bottom right
-			total++;
-		}
-		if (!board.getSpotAt(i, j + 1).isEmpty()) { // bottom center
-			total++;
-		}		
-		return total;
-	}
-	
-	public int checkNumberNeighbors__TopRightCorner_OfBoard(int i, int j) {
-		// only check left,bottom left,and bottom center for neighbors
-		
-		int total = 0;
-		if (!board.getSpotAt(i - 1, j).isEmpty()) { // left
-			total++;
-		}
-		if (!board.getSpotAt(i - 1, j + 1).isEmpty()) { // bottom left
-			total++;
-		}
-		if (!board.getSpotAt(i, j + 1).isEmpty()) { // bottom center
-			total++;
-		}		
-		return total;
-	}
-	
-	public int checkNumberNeighbors_BottomRightCorner_OfBoard(int i, int j) {
-		// only check left,top left,and top center for neighbors
-		
-		int total = 0;
-		if (!board.getSpotAt(i - 1, j).isEmpty()) { // left
-			total++;
-		}
-		if (!board.getSpotAt(i - 1, j - 1).isEmpty()) { // top left
-			total++;
-		}
-		if (!board.getSpotAt(i, j - 1).isEmpty()) { // top center
-			total++;
-		}		
-		return total;
-	}
-	
-	public int checkNumberNeighbors__BottomLeftCorner_OfBoard(int i, int j) {
-		// only check right,top right,and top center for neighbors
-		
-		int total = 0;
-		if (!board.getSpotAt(i + 1, j).isEmpty()) { // right
-			total++;
-		}
-		if (!board.getSpotAt(i + 1, j - 1).isEmpty()) { // top right
-			total++;
-		}
-		if (!board.getSpotAt(i, j - 1).isEmpty()) { // top center
-			total++;
-		}		
-		return total;
-	}
-	
-	public int checkNumberNeighbors_LeftEdge_OfBoard(int i, int j) {
-		// only check top center, top right, right, bottom right, bottom center
-		
-		int total = 0;
-		if (!board.getSpotAt(i, j - 1).isEmpty()) { // top center
-			total++;
-		}	
-		if (!board.getSpotAt(i + 1, j - 1).isEmpty()) { // top right
-			total++;
-		}	
-		if (!board.getSpotAt(i + 1, j).isEmpty()) { // right
-			total++;
-		}
-		if (!board.getSpotAt(i + 1, j + 1).isEmpty()) { // bottom right
-			total++;
-		}
-		if (!board.getSpotAt(i, j + 1).isEmpty()) { // bottom center
-			total++;
-		}		
-		return total;
-	}
-	
-	public int checkNumberNeighbors__TopEdge_OfBoard(int i, int j) {
-		// only check left, bottom left, bottom center,bottom right, right
-		
-		int total = 0;
-		if (!board.getSpotAt(i - 1, j).isEmpty()) { // left
-			total++;
-		}
-		if (!board.getSpotAt(i - 1, j + 1).isEmpty()) { // bottom left
-			total++;
-		}
-		if (!board.getSpotAt(i, j + 1).isEmpty()) { // bottom center
-			total++;
-		}	
-		if (!board.getSpotAt(i + 1, j + 1).isEmpty()) { // bottom right
-			total++;
-		}
-		if (!board.getSpotAt(i + 1, j).isEmpty()) { // right
-			total++;
-		}
-		return total;
-	}
-	
-	public int checkNumberNeighbors_RightEdge_OfBoard(int i, int j) {
-		// only check top center, top left,left,bottom left, bottom center
-		
-		int total = 0;
-		if (!board.getSpotAt(i, j - 1).isEmpty()) { // top center
-			total++;
-		}	
-		if (!board.getSpotAt(i - 1, j - 1).isEmpty()) { // top left
-			total++;
-		}
-		if (!board.getSpotAt(i - 1, j).isEmpty()) { // left
-			total++;
-		}
-		if (!board.getSpotAt(i - 1, j + 1).isEmpty()) { // bottom left
-			total++;
-		}
-		if (!board.getSpotAt(i, j + 1).isEmpty()) { // bottom center
-			total++;
-		}	
-		return total;
-	}
-	
-	public int checkNumberNeighbors__BottomEdge_OfBoard(int i, int j) {
-		// only check left,top left,top center,top right, right
-		
-		int total = 0;
-		if (!board.getSpotAt(i - 1, j).isEmpty()) { // left
-			total++;
-		}
-		if (!board.getSpotAt(i - 1, j - 1).isEmpty()) { // top left
-			total++;
-		}
-		if (!board.getSpotAt(i, j - 1).isEmpty()) { // top center
-			total++;
-		}	
-		if (!board.getSpotAt(i + 1, j - 1).isEmpty()) { // top right
-			total++;
-		}	
-		if (!board.getSpotAt(i + 1, j).isEmpty()) { // right
-			total++;
-		}
-		return total;
-	}
-		
-		// TORUS MODE versions of these check neighbor methods (for everything but the middle spots)
-		
-		public int TORUSMODE_checkNumberNeighbors_TopLeftCorner_OfBoard(int i, int j) {
-			 // only check right,bottom right,and bottom center for neighbors
-			 
-			int total = 0;
-			if (!board.getSpotAt(i + 1, j).isEmpty()) { // right
-				total++;
-			}
-			if (!board.getSpotAt(i + 1, j + 1).isEmpty()) { // bottom right
-				total++;
-			}
-			if (!board.getSpotAt(i, j + 1).isEmpty()) { // bottom center
-				total++;
-			}
-			// add a check for "top left of this", "top middle from this", "top right from this", "left" from this, "bottom left" from this
-			//up and left
-			if (!board.getSpotAt(width - 1, height - 1).isEmpty()) {
-				total++;
-			}
-			// just up
-			if (!board.getSpotAt(i, height -1).isEmpty()) {
-				total++;
-			}
-			//up and right
-			if (!board.getSpotAt(i+ 1, height -1).isEmpty()) {
-				total++;
-			}
-			//left
-			if (!board.getSpotAt(width -1, j).isEmpty()) {
-				total++;
-			}
-			//bottom left
-			if (!board.getSpotAt(width - 1, j + 1).isEmpty()) {
-				total++;
-			}
-			
-			return total;
-		}
-		
-		public int TORUSMODE_checkNumberNeighbors__TopRightCorner_OfBoard(int i, int j) {
-			// only check left,bottom left,and bottom center for neighbors
-			
-			int total = 0;
-			if (!board.getSpotAt(i - 1, j).isEmpty()) { // left
-				total++;
-			}
-			if (!board.getSpotAt(i - 1, j + 1).isEmpty()) { // bottom left
-				total++;
-			}
-			if (!board.getSpotAt(i, j + 1).isEmpty()) { // bottom center
-				total++;
-			}	
-			//top left top center top right, right , bottom right
-			//top left
-			if (!board.getSpotAt(i - 1 , height - 1).isEmpty()) { // left
-				total++;
-			}
-			// top center
-			if (!board.getSpotAt(i, height - 1).isEmpty()) { // left
-				total++;
-			}//top right
-			if (!board.getSpotAt(0, height - 1).isEmpty()) { // left
-				total++;
-			}//right
-			if (!board.getSpotAt(0, 0).isEmpty()) { // left
-				total++;
-			}// bottom right
-			if (!board.getSpotAt(0, j+ 1).isEmpty()) { // left
-				total++;
-			}
-			return total;
-		}
-		
-		public int TORUSMODE_checkNumberNeighbors_BottomRightCorner_OfBoard(int i, int j) {
-			// only check left,top left,and top center for neighbors
-			
-			int total = 0;
-			if (!board.getSpotAt(i - 1, j).isEmpty()) { // left
-				total++;
-			}
-			if (!board.getSpotAt(i - 1, j - 1).isEmpty()) { // top left
-				total++;
-			}
-			if (!board.getSpotAt(i, j - 1).isEmpty()) { // top center
-				total++;
-			}		
-			//top right, right, bottom right, bottom center, bottom left
-			if (!board.getSpotAt(0, j - 1).isEmpty()) { // top right
-				total++;
-			}		
-			if (!board.getSpotAt(0, j).isEmpty()) { // right
-				total++;
-			}		
-			if (!board.getSpotAt(0, 0).isEmpty()) { // bottom right
-				total++;
-			}		
-			if (!board.getSpotAt(i, 0).isEmpty()) { // bottom center
-				total++;
-			}		
-			if (!board.getSpotAt(i - 1, 0).isEmpty()) { // bottom left
-				total++;
-			}		
-			return total;
-		}
-		
-		public int TORUSMODE_checkNumberNeighbors__BottomLeftCorner_OfBoard(int i, int j) {
-			// only check right,top right,and top center for neighbors
-			
-			int total = 0;
-			if (!board.getSpotAt(i + 1, j).isEmpty()) { // right
-				total++;
-			}
-			if (!board.getSpotAt(i + 1, j - 1).isEmpty()) { // top right
-				total++;
-			}
-			if (!board.getSpotAt(i, j - 1).isEmpty()) { // top center
-				total++;
-			}		
-			// bottom right bottom center bottom left left top left
-			if (!board.getSpotAt(i + 1, 0).isEmpty()) { // bottom right
-				total++;
-			}	
-			if (!board.getSpotAt(i, 0).isEmpty()) { // bottom center
-				total++;
-			}	
-			if (!board.getSpotAt(width- 1, 0).isEmpty()) { // bottom left
-				total++;
-			}	
-			if (!board.getSpotAt(width - 1, j).isEmpty()) { //left 
-				total++;
-			}	
-			if (!board.getSpotAt(width - 1, 0).isEmpty()) { // top left
-				total++;
-			}	
-			return total;
-		}
-		
-		public int TORUSMODE_checkNumberNeighbors_LeftEdge_OfBoard(int i, int j) {
-			// only check top center, top right, right, bottom right, bottom center
-			
-			int total = 0;
-			if (!board.getSpotAt(i, j - 1).isEmpty()) { // top center
-				total++;
-			}	
-			if (!board.getSpotAt(i + 1, j - 1).isEmpty()) { // top right
-				total++;
-			}	
-			if (!board.getSpotAt(i + 1, j).isEmpty()) { // right
-				total++;
-			}
-			if (!board.getSpotAt(i + 1, j + 1).isEmpty()) { // bottom right
-				total++;
-			}
-			if (!board.getSpotAt(i, j + 1).isEmpty()) { // bottom center
-				total++;
-			}		
-			//left top left bottom left
-			if (!board.getSpotAt(width -1, j + 1).isEmpty()) { // top left
-				total++;
-			}	
-			if (!board.getSpotAt(width - 1, j).isEmpty()) { // left
-				total++;
-			}
-			if (!board.getSpotAt(width - 1, j - 1).isEmpty()) { // bottom left
-				total++;
-			}	
-			return total;
-		}
-		
-		public int TORUSMODE_checkNumberNeighbors__TopEdge_OfBoard(int i, int j) {
-			// only check left, bottom left, bottom center,bottom right, right
-			
-			int total = 0;
-			if (!board.getSpotAt(i - 1, j).isEmpty()) { // left
-				total++;
-			}
-			if (!board.getSpotAt(i - 1, j + 1).isEmpty()) { // bottom left
-				total++;
-			}
-			if (!board.getSpotAt(i, j + 1).isEmpty()) { // bottom center
-				total++;
-			}	
-			if (!board.getSpotAt(i + 1, j + 1).isEmpty()) { // bottom right
-				total++;
-			}
-			if (!board.getSpotAt(i + 1, j).isEmpty()) { // right
-				total++;
-			}
-			// top left top center top right
-			if (!board.getSpotAt(i - 1, height - 1).isEmpty()) { // top left
-				total++;
-			}
-			if (!board.getSpotAt(i, height - 1).isEmpty()) { // top
-				total++;
-			}
-			if (!board.getSpotAt(i + 1, height - 1).isEmpty()) { // top right
-				total++;
-			}
-			return total;
-		}
-		
-		public int TORUSMODE_checkNumberNeighbors_RightEdge_OfBoard(int i, int j) {
-			// only check top center, top left,left,bottom left, bottom center
-			
-			int total = 0;
-			if (!board.getSpotAt(i, j - 1).isEmpty()) { // top center
-				total++;
-			}	
-			if (!board.getSpotAt(i - 1, j - 1).isEmpty()) { // top left
-				total++;
-			}
-			if (!board.getSpotAt(i - 1, j).isEmpty()) { // left
-				total++;
-			}
-			if (!board.getSpotAt(i - 1, j + 1).isEmpty()) { // bottom left
-				total++;
-			}
-			if (!board.getSpotAt(i, j + 1).isEmpty()) { // bottom center
-				total++;
-			}	
-			// top right, right, bottom right
-			if (!board.getSpotAt(0, j - 1).isEmpty()) { // top right
-				total++;
-			}	
-			if (!board.getSpotAt(0, j).isEmpty()) { // right
-				total++;
-			}	
-			if (!board.getSpotAt(0, j + 1).isEmpty()) { // bottom right
-				total++;
-			}	
-			return total;
-		}
-		
-		public int TORUSMODE_checkNumberNeighbors__BottomEdge_OfBoard(int i, int j) {
-			// only check left,top left,top center,top right, right
-			
-			int total = 0;
-			if (!board.getSpotAt(i - 1, j).isEmpty()) { // left
-				total++;
-			}
-			if (!board.getSpotAt(i - 1, j - 1).isEmpty()) { // top left
-				total++;
-			}
-			if (!board.getSpotAt(i, j - 1).isEmpty()) { // top center
-				total++;
-			}	
-			if (!board.getSpotAt(i + 1, j - 1).isEmpty()) { // top right
-				total++;
-			}	
-			if (!board.getSpotAt(i + 1, j).isEmpty()) { // right
-				total++;
-			}
-			if (!board.getSpotAt(i - 1, 0).isEmpty()) { // bottom left
-				total++;
-			}
-			if (!board.getSpotAt(i, 0).isEmpty()) { // bottom center
-				total++;
-			}
-			if (!board.getSpotAt(i + 1, 0).isEmpty()) { // bottom right
-				total++;
-			}
-			return total;
-	}
-		
-		// for the START/STOP button for ADVANCED MODE
-		public void automaticallyRun() {
-			new Thread(new Runnable() {
-			    @Override
-			    public void run() {
-			        while(automaticRunStarted){
-			           try {
-			               Thread.sleep(200);
-			           } catch (InterruptedException e) {
-			               e.printStackTrace();
-			           }
-			           nextTurn();
-			           System.out.println("nextTurn");
-			       }
-			    }
-			 }).start();
-		}
-	
+
 }
