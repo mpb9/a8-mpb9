@@ -1,5 +1,4 @@
-p ackage a8;
-
+package a8;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
