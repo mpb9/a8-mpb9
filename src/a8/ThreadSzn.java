@@ -2,11 +2,11 @@ package a8;
 
 public class ThreadSzn extends Thread {
 	private boolean done;
-	private LifeWidget tw;
+	private LifeWidget widgy;
 
-	public ThreadSzn(LifeWidget tw) {
-		this.tw = tw;
-		done = !tw.startButton.isSelected();
+	public ThreadSzn(LifeWidget widgy) {
+		this.widgy = widgy;
+		done = !widgy.startButton.isSelected();
 
 	}
 
@@ -18,12 +18,12 @@ public class ThreadSzn extends Thread {
 
 		while (!done) {
 			try {
-				Thread.sleep(tw.timeBetweenRuns);
+				Thread.sleep(widgy.timeBetweenRuns);
 			} catch (InterruptedException e) {
 			}
-			tw.runOneStep();
-			done = !tw.startButton.isSelected();
+			widgy.runOneStep();
+			done = !widgy.startButton.isSelected();
 		}
-		tw.runOneStep();
+		widgy.runOneStep();
 	}
 }

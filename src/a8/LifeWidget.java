@@ -17,7 +17,7 @@ import javax.swing.event.ChangeListener;
 
 public class LifeWidget extends JPanel implements ActionListener, SpotListener, ChangeListener {
 
-	private JSpotBoard _board; /* SpotBoard playing area. */
+	private JSpotBoard b; /* SpotBoard playing area. */
 	private JLabel _message; /* Label for messages. */
 	private boolean _game_won; /* Indicates if games was been won already. */
 	private JSlider _slider;
@@ -38,8 +38,6 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener, 
 	private ThreadSzn autoRun;
 
 	public LifeWidget() {
-
-		/* Create SpotBoard and message label. */
 
 		_slider = new JSlider(JSlider.HORIZONTAL, 10, 500, 10);
 		_slider.addChangeListener(this);
@@ -66,15 +64,12 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener, 
 		threadSlider.addChangeListener(this);
 		startButton.addActionListener(this);
 
-		_board = new JSpotBoard(sliderValue, sliderValue);
+		b = new JSpotBoard(sliderValue, sliderValue);
 		_message = new JLabel();
 
-		/* Set layout and place SpotBoard at center. */
 
 		setLayout(new BorderLayout());
-		add(_board, BorderLayout.CENTER);
-
-		/* Create subpanel for message area and reset button. */
+		add(b, BorderLayout.CENTER);
 
 		JPanel thresholdPanel = new JPanel();
 		thresholdPanel.setLayout(new GridLayout(5, 2));
@@ -83,7 +78,6 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener, 
 		JPanel clear_message_panel = new JPanel();
 		clear_message_panel.setLayout(new BorderLayout());
 
-		/* Reset button. Add ourselves as the action listener. */
 
 		JLabel lowBirth = new JLabel("Lower Birth Threshold (Integers Only)");
 		JLabel highBirth = new JLabel("Higher Birth Threshold (Integers Only)");
@@ -91,7 +85,7 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener, 
 		JLabel highSurvive = new JLabel("Higher Survival Threshold (Integers Only)");
 		JButton incrementButton = new JButton("One Step");
 		torusButton = new JToggleButton("Torus");
-		JButton randomFillButton = new JButton("Fill Randomly");
+		JButton randomFillButton = new JButton("Randomly Fill");
 		JButton clear_button = new JButton("Clear");
 
 		resetButton.addActionListener(this);
@@ -123,62 +117,46 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener, 
 		thresholdPanel.add(applyButton);
 		thresholdPanel.add(resetButton);
 
-		/* Add subpanel in south area of layout. */
-
 		add(incrementTorusRandFillPanel, BorderLayout.EAST);
 		add(clear_message_panel, BorderLayout.SOUTH);
 		add(thresholdPanel, BorderLayout.NORTH);
 		add(threadPanel, BorderLayout.WEST);
 
-		/*
-		 * Add ourselves as a spot listener for all of the spots on the spot board.
-		 */
-		_board.addSpotListener(this);
+		
+		b.addSpotListener(this);
 
-		/* Reset game. */
 		resetGame();
 	}
 
-	/*
-	 * resetGame
-	 * 
-	 * Resets the game by clearing all the spots on the board, picking a new secret
-	 * spot, resetting game status fields, and displaying start message.
-	 * 
-	 */
 
 	private void resetGame() {
-		/*
-		 * Clear all spots on board. Uses the fact that SpotBoard implements
-		 * Iterable<Spot> to do this in a for-each loop.
-		 */
+		
 
-		_board.setVisible(false);
-		remove(_board);
-		_board = new JSpotBoard(sliderValue, sliderValue);
-		add(_board, BorderLayout.CENTER);
-		_board.addSpotListener(this);
+		b.setVisible(false);
+		remove(b);
+		b = new JSpotBoard(sliderValue, sliderValue);
+		add(b, BorderLayout.CENTER);
+		b.addSpotListener(this);
 
-		for (Spot s : _board) {
-			s.setBackground(Color.LIGHT_GRAY);
+		for (Spot s : b) {
+			s.setBackground(Color.WHITE);
 		}
 
-		_message.setText("Welcome to the Game of Life. Below is the size of the Grid.");
+		_message.setText("Welcome to the Game of Life. Below is the Grid size.");
 	}
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		/* Handles reset game button. Simply reset the game. */
 		if (e.getActionCommand() == "Clear") {
 			resetGame();
 		} else if (e.getActionCommand() == "One Step") {
 			this.runOneStep();
 		} else if (e.getActionCommand() == "Fill Randomly") {
-			for (Spot s : _board) {
+			for (Spot s : b) {
 				if (Math.random() >= 0.5) {
 					s.setBackground(Color.BLACK);
 				} else {
-					s.setBackground(Color.LIGHT_GRAY);
+					s.setBackground(Color.WHITE);
 				}
 			}
 		} else if (e.getActionCommand() == "Torus") {
@@ -216,14 +194,9 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener, 
 		}
 	}
 
-	/*
-	 * Implementation of SpotListener below. Implements game logic as responses to
-	 * enter/exit/click on spots.
-	 */
-
 	public void runOneStep() {
 		boolean[][] liveOrDie = new boolean[sliderValue][sliderValue];
-		for (Spot s : _board) {
+		for (Spot s : b) {
 			int liveCount = 0;
 			for (int i = -1; i < 2; i++) {
 				for (int j = -1; j < 2; j++) {
@@ -233,42 +206,42 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener, 
 						} else if (s.getSpotX() + j < 0 || s.getSpotX() + j >= sliderValue || s.getSpotY() + i < 0
 								|| s.getSpotY() + i >= sliderValue) {
 							if (s.getSpotX() + j < 0 && s.getSpotY() + i < 0) {
-								if (_board.getSpotAt(sliderValue - 1, sliderValue - 1).getBackground() == Color.BLACK) {
+								if (b.getSpotAt(sliderValue - 1, sliderValue - 1).getBackground() == Color.BLACK) {
 									liveCount++;
 								}
 							} else if (s.getSpotX() + j >= sliderValue && s.getSpotY() + i >= sliderValue) {
-								if (_board.getSpotAt(0, 0).getBackground() == Color.BLACK) {
+								if (b.getSpotAt(0, 0).getBackground() == Color.BLACK) {
 									liveCount++;
 								}
 							} else if (s.getSpotX() + j >= sliderValue && s.getSpotY() + i < 0) {
-								if (_board.getSpotAt(0, sliderValue - 1).getBackground() == Color.BLACK) {
+								if (b.getSpotAt(0, sliderValue - 1).getBackground() == Color.BLACK) {
 									liveCount++;
 								}
 							} else if (s.getSpotX() + j < 0 && s.getSpotY() + i >= sliderValue) {
-								if (_board.getSpotAt(sliderValue - 1, 0).getBackground() == Color.BLACK) {
+								if (b.getSpotAt(sliderValue - 1, 0).getBackground() == Color.BLACK) {
 									liveCount++;
 								}
 							} else if (s.getSpotX() + j < 0) {
-								if (_board.getSpotAt(sliderValue - 1, s.getSpotY() + i)
+								if (b.getSpotAt(sliderValue - 1, s.getSpotY() + i)
 										.getBackground() == Color.BLACK) {
 									liveCount++;
 								}
 							} else if (s.getSpotX() + j >= sliderValue) {
-								if (_board.getSpotAt(0, s.getSpotY() + i).getBackground() == Color.BLACK) {
+								if (b.getSpotAt(0, s.getSpotY() + i).getBackground() == Color.BLACK) {
 									liveCount++;
 								}
 							} else if (s.getSpotY() + i < 0) {
-								if (_board.getSpotAt(s.getSpotX() + j, sliderValue - 1)
+								if (b.getSpotAt(s.getSpotX() + j, sliderValue - 1)
 										.getBackground() == Color.BLACK) {
 									liveCount++;
 								}
 							} else if (s.getSpotY() + i >= sliderValue) {
-								if (_board.getSpotAt(s.getSpotX() + j, 0).getBackground() == Color.BLACK) {
+								if (b.getSpotAt(s.getSpotX() + j, 0).getBackground() == Color.BLACK) {
 									liveCount++;
 								}
 							}
-						} else if (_board.getSpotAt(s.getSpotX() + j, s.getSpotY() + i)
-								.getBackground() == Color.LIGHT_GRAY) {
+						} else if (b.getSpotAt(s.getSpotX() + j, s.getSpotY() + i)
+								.getBackground() == Color.WHITE) {
 							continue;
 						} else {
 							liveCount++;
@@ -279,8 +252,8 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener, 
 						} else if (s.getSpotX() + j < 0 || s.getSpotX() + j >= sliderValue || s.getSpotY() + i < 0
 								|| s.getSpotY() + i >= sliderValue) {
 							continue;
-						} else if (_board.getSpotAt(s.getSpotX() + j, s.getSpotY() + i)
-								.getBackground() == Color.LIGHT_GRAY) {
+						} else if (b.getSpotAt(s.getSpotX() + j, s.getSpotY() + i)
+								.getBackground() == Color.WHITE) {
 							continue;
 						} else {
 							liveCount++;
@@ -303,9 +276,9 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener, 
 		for (int i = 0; i < sliderValue; i++) {
 			for (int j = 0; j < sliderValue; j++) {
 				if (liveOrDie[j][i] == false) {
-					_board.getSpotAt(j, i).setBackground(Color.LIGHT_GRAY);
+					b.getSpotAt(j, i).setBackground(Color.WHITE);
 				} else {
-					_board.getSpotAt(j, i).setBackground(Color.BLACK);
+					b.getSpotAt(j, i).setBackground(Color.BLACK);
 				}
 			}
 		}
@@ -313,8 +286,6 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener, 
 
 	@Override
 	public void spotEntered(Spot s) {
-		/* Highlight spot if game still going on. */
-
 		if (_game_won) {
 			return;
 		}
@@ -323,8 +294,6 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener, 
 
 	@Override
 	public void spotExited(Spot s) {
-		/* Unhighlight spot. */
-
 		s.unhighlightSpot();
 	}
 
@@ -345,10 +314,10 @@ public class LifeWidget extends JPanel implements ActionListener, SpotListener, 
 
 	@Override
 	public void spotClicked(Spot spot) {
-		if (spot.getBackground() == Color.LIGHT_GRAY) {
+		if (spot.getBackground() == Color.WHITE) {
 			spot.setBackground(Color.BLACK);
 		} else {
-			spot.setBackground(Color.LIGHT_GRAY);
+			spot.setBackground(Color.WHITE);
 		}
 	}
 
